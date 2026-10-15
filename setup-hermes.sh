@@ -86,6 +86,23 @@ else
 fi
 target="$os-$arch"
 
+# Android/Termux cannot execute ordinary GNU/Linux ARM64 binaries. The lock
+# contains a Bionic-specific row, but it is a .deb, not the tarball expected
+# by this bootstrapper. Fail before modifying the tool store rather than
+# staging an executable which will fail with a misleading ENOENT.
+if [ "$os" = linux ] && [ "$arch" = arm64 ] && {
+     [ -n "${TERMUX_VERSION:-}" ] ||
+     [ -d /data/data/com.termux/files/usr ] ||
+     [ -n "${ANDROID_ROOT:-}" ];
+   }; then
+  echo -e "${RED}✗${NC} Termux/Bionic detected: the development bootstrap does not yet support the pinned .deb artifacts." >&2
+  echo "  Do not use linux-arm64 uv binaries on Android." >&2
+  echo "  Hermes Forge Doctor can run without activation:" >&2
+  echo "    python scripts/forge_doctor.py --json" >&2
+  echo "  This check does not alter your existing Hermes installation." >&2
+  exit 1
+fi
+
 # The machine-written lock has one member per line. Follow object names and
 # braces, not indentation, to read pins before Python is available.
 pin() { # $1 = field (url | sha256 | version), $2 = package (default: uv)
